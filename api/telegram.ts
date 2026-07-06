@@ -180,30 +180,42 @@ async function handleMessage(message: any): Promise<void> {
   await performEdit(chatId, site, file, text);
 }
 
-// Shows the list of sites/files this user may edit as tappable buttons.
+// Chunks a flat button list into grid rows.
+function grid<T>(items: T[], perRow: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += perRow) rows.push(items.slice(i, i + perRow));
+  return rows;
+}
+
+// Step 1 of the picker — the websites this user can edit, as a domain grid.
 async function showSections(
   chatId: number,
   userId: number | undefined,
 ): Promise<void> {
-  const rows: { text: string; callback_data: string }[][] = [];
-  for (const s of sites) {
-    if (!canEditSite(userId, s)) continue;
-    for (const f of s.files) {
-      rows.push([
-        { text: `${s.name} — ${f.key}`, callback_data: `pick:${s.key}:${f.key}` },
-      ]);
-    }
-  }
-
-  if (rows.length === 0) {
+  const editable = sites.filter((s) => canEditSite(userId, s));
+  if (editable.length === 0) {
     await sendMessage(chatId, "You don't have permission to edit any sites yet.");
     return;
   }
+  const buttons = editable.map((s) => ({
+    text: s.label,
+    callback_data: `site:${s.key}`,
+  }));
+  await sendMessage(chatId, "📋 <b>Pick a website</b>", {
+    inline_keyboard: grid(buttons, 2),
+  });
+}
 
+// Step 2 — the sections of a chosen website, as a grid.
+async function showSiteSections(chatId: number, site: Site): Promise<void> {
+  const buttons = site.files.map((f) => ({
+    text: f.key,
+    callback_data: `pick:${site.key}:${f.key}`,
+  }));
   await sendMessage(
     chatId,
-    "📋 <b>What would you like to edit?</b>\nPick a section, then reply with your change.",
-    { inline_keyboard: rows },
+    `✏️ <b>${escapeHtml(site.label)}</b> — pick a section, then reply with your change.`,
+    { inline_keyboard: grid(buttons, 2) },
   );
 }
 
@@ -219,12 +231,9 @@ async function listMySites(
   }
   const lines = ["🌐 <b>Websites you can edit</b>", ""];
   for (const s of editable) {
-    lines.push(`<b>${escapeHtml(s.name)}</b>`);
-    for (const f of s.files) {
-      lines.push(`   • ${escapeHtml(f.key)}`);
-    }
-    lines.push("");
+    lines.push(`<b>${escapeHtml(s.label)}</b> — ${s.files.map((f) => escapeHtml(f.key)).join(", ")}`);
   }
+  lines.push("");
   lines.push("Tap 📋 Edit a section to change any of these.");
   await sendMessage(chatId, lines.join("\n"));
 }
@@ -430,6 +439,17 @@ async function handleCallback(cq: any): Promise<void> {
   }
   if (!canEditSite(userId, site)) {
     await answerCallbackQuery(cq.id, "Not authorized");
+    return;
+  }
+
+  // "site" — user chose a website from the grid; show its sections.
+  if (action === "site") {
+    if (!chatId) {
+      await answerCallbackQuery(cq.id);
+      return;
+    }
+    await answerCallbackQuery(cq.id);
+    await showSiteSections(chatId, site);
     return;
   }
 

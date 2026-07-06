@@ -25,6 +25,7 @@ export interface ContentFile {
 export interface Site {
   key: string; // short slug — used in Telegram button data, keep it under ~15 chars
   name: string; // human-friendly name shown in chat
+  label: string; // short leading-domain label for the button grid (e.g. "comsoc")
   owner: string; // GitHub owner (user or org)
   repo: string; // GitHub repo name
   baseBranch: string; // branch to open PRs against, usually "main"
@@ -66,6 +67,7 @@ function chapterSite(key: string, name: string, repo: string): Site {
   return {
     key,
     name,
+    label: key, // subdomain, e.g. "comsoc"
     owner: "IEEE-RWANDA",
     repo,
     baseBranch: "main",
@@ -94,6 +96,7 @@ export const sites: Site[] = [
   {
     key: "portfolio",
     name: "Personal Portfolio (kipngenokoech.com)",
+    label: "kipngenokoech",
     owner: "kkipngenokoech", // <-- CHANGE to your GitHub username/org if different
     repo: "kip", // <-- CHANGE to the actual repo name on GitHub
     baseBranch: "main",
@@ -146,6 +149,7 @@ export const sites: Site[] = [
   {
     key: "ieee-rw",
     name: "IEEE Rwanda Section",
+    label: "ieeerwanda",
     owner: "IEEE-RWANDA",
     repo: "ieeerwanda",
     baseBranch: "main",
@@ -203,6 +207,7 @@ export const sites: Site[] = [
   {
     key: "ies",
     name: "IEEE IES Rwanda",
+    label: "ies",
     owner: "IEEE-RWANDA",
     repo: "iesrwanda",
     baseBranch: "main",
