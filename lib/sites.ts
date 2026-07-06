@@ -47,6 +47,49 @@ export function tokenForSite(site: Site): string {
   return token;
 }
 
+// The IEEE chapter sites (comsoc/aess/mtts/grss) share one template: content in
+// src/data/{events,team}.json with the same shapes. This builds their registry
+// entry so we don't repeat it four times.
+const EVENT_FIELDS: ItemField[] = [
+  { key: "title", label: "Title" },
+  { key: "date", label: "Date (YYYY-MM-DD)" },
+  { key: "location", label: "Location" },
+  { key: "description", label: "Description" },
+];
+const TEAM_FIELDS: ItemField[] = [
+  { key: "name", label: "Name" },
+  { key: "role", label: "Role" },
+  { key: "affiliation", label: "Affiliation" },
+];
+
+function chapterSite(key: string, name: string, repo: string): Site {
+  return {
+    key,
+    name,
+    owner: "IEEE-RWANDA",
+    repo,
+    baseBranch: "main",
+    tokenEnv: "GITHUB_TOKEN_IEEE",
+    editorsEnv: "IEEE_EDITOR_IDS",
+    files: [
+      {
+        key: "events",
+        path: "src/data/events.json",
+        description:
+          "Events. A JSON array of { title, date (ISO, e.g. 2026-08-15), location, description, registrationUrl?, past? }.",
+        itemFields: EVENT_FIELDS,
+      },
+      {
+        key: "team",
+        path: "src/data/team.json",
+        description:
+          "Team / committee members. A JSON array of { name, role, affiliation, photo?, linkedin? }.",
+        itemFields: TEAM_FIELDS,
+      },
+    ],
+  };
+}
+
 export const sites: Site[] = [
   {
     key: "portfolio",
@@ -151,8 +194,13 @@ export const sites: Site[] = [
     ],
   },
 
-  // --- Remaining IEEE sites (comsoc, aess, mtts, grss, iesrwanda) get added
-  //     here once their content is extracted to JSON. ---
+  chapterSite("comsoc", "IEEE ComSoc Rwanda", "comsoc"),
+  chapterSite("aess", "IEEE AESS Rwanda", "aess"),
+  chapterSite("mtts", "IEEE MTT-S Rwanda", "mtts"),
+  chapterSite("grss", "IEEE GRSS Rwanda", "grss"),
+
+  // iesrwanda still to add — its content lives in a different layout, and its
+  // repo owner needs confirming (personal vs IEEE-RWANDA org).
 ];
 
 export function findSite(key: string): Site | undefined {
