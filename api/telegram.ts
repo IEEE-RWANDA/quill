@@ -5,6 +5,7 @@ import {
   editMessageText,
   answerCallbackQuery,
   escapeHtml,
+  sendPhoto,
   downloadTelegramFile,
   type InlineKeyboard,
   type ReplyKeyboard,
@@ -204,6 +205,68 @@ async function showSections(
   await sendMessage(chatId, "📋 <b>Pick a website</b>", {
     inline_keyboard: grid(buttons, 2),
   });
+}
+
+// Picks a human-readable label for a content item (events, team, etc.).
+function itemLabel(it: any): string {
+  for (const k of ["title", "name", "degree", "company", "acronym"]) {
+    if (typeof it[k] === "string" && it[k].trim()) {
+      const extra = it.date || it.role || it.year || it.when;
+      return extra ? `${it[k]} — ${extra}` : it[k];
+    }
+  }
+  if (typeof it.quote === "string") return `"${it.quote.slice(0, 60)}…"`;
+  return JSON.stringify(it).slice(0, 60);
+}
+
+// Returns the item's image/photo path if set.
+function itemImage(it: any): string | null {
+  for (const k of ["image", "photo"]) {
+    if (typeof it[k] === "string" && it[k].trim()) return it[k];
+  }
+  return null;
+}
+
+// Raw GitHub URL for an image path (which points under the site's public/ dir).
+function rawImageUrl(site: Site, imgPath: string): string {
+  const p = imgPath.startsWith("/") ? imgPath : `/${imgPath}`;
+  return `https://raw.githubusercontent.com/${site.owner}/${site.repo}/${site.baseBranch}/public${p}`;
+}
+
+// Shows the items already in a section (with a 📷 marker + the actual images).
+async function listItems(
+  chatId: number,
+  site: Site,
+  file: ContentFile,
+): Promise<void> {
+  let items: any;
+  try {
+    const token = tokenForSite(site);
+    const { content } = await getFile(token, site.owner, site.repo, file.path, site.baseBranch);
+    items = JSON.parse(content);
+  } catch {
+    return; // can't preview — just fall through to the edit prompt
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    await sendMessage(chatId, `📄 <b>${escapeHtml(file.key)}</b> is currently empty.`);
+    return;
+  }
+
+  const lines = [`📄 <b>Current ${escapeHtml(file.key)}</b> (${items.length}):`, ""];
+  items.forEach((it, i) => {
+    lines.push(`${i + 1}. ${escapeHtml(itemLabel(it))}${itemImage(it) ? " 📷" : ""}`);
+  });
+  await sendMessage(chatId, lines.join("\n"));
+
+  // Send up to 6 of the images (best-effort — broken paths silently skip).
+  let sent = 0;
+  for (const it of items) {
+    if (sent >= 6) break;
+    const img = itemImage(it);
+    if (!img) continue;
+    await sendPhoto(chatId, rawImageUrl(site, img), itemLabel(it));
+    sent++;
+  }
 }
 
 // Step 2 — the sections of a chosen website, as a grid.
@@ -463,10 +526,11 @@ async function handleCallback(cq: any): Promise<void> {
       return;
     }
     await answerCallbackQuery(cq.id);
+    await listItems(chatId, site, file); // show what's already there first
     await sendMessage(
       chatId,
       `✍️ Editing <b>${escapeHtml(site.name)}</b> → <i>${escapeHtml(file.description)}</i>\n\n` +
-        `Reply to this message with your change.\n\n` +
+        `Reply to this message with your change (add, edit, or remove — attach a photo to set an image).\n\n` +
         `<i>Section: ${site.key}/${file.key}</i>`,
       { force_reply: true, input_field_placeholder: "Describe your change…" },
     );

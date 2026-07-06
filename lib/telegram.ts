@@ -78,6 +78,23 @@ export async function answerCallbackQuery(
   });
 }
 
+// Sends a photo by URL (best-effort — never throws; a broken URL just no-ops).
+export async function sendPhoto(
+  chatId: number,
+  photoUrl: string,
+  caption?: string,
+): Promise<void> {
+  try {
+    await fetch(api("sendPhoto"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption }),
+    });
+  } catch {
+    /* ignore — image preview is best-effort */
+  }
+}
+
 // Downloads a photo/file the user sent, returning its bytes base64-encoded plus
 // a file extension inferred from Telegram's stored path (defaults to jpg).
 export async function downloadTelegramFile(
