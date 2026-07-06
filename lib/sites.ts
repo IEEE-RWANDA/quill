@@ -100,29 +100,59 @@ export const sites: Site[] = [
     ],
   },
 
-  // --- Add the IEEE sites here once their content is in JSON files. Example: ---
-  // {
-  //   key: "ieee-rw",
-  //   name: "IEEE Rwanda Section",
-  //   owner: "IEEE-RWANDA",
-  //   repo: "ieee-rwanda",
-  //   baseBranch: "main",
-  //   tokenEnv: "GITHUB_TOKEN_IEEE", // fine-grained token scoped to the IEEE-RWANDA org
-  //   editorsEnv: "IEEE_EDITOR_IDS", // approved team members who can edit IEEE sites
-  //   files: [
-  //     {
-  //       key: "events",
-  //       path: "content/events.json",
-  //       description:
-  //         "Upcoming events. A JSON array of { title, date, venue, description, registerUrl }.",
-  //     },
-  //     {
-  //       key: "team",
-  //       path: "content/team.json",
-  //       description: "Committee members. A JSON array of { name, role, photoUrl }.",
-  //     },
-  //   ],
-  // },
+  {
+    key: "ieee-rw",
+    name: "IEEE Rwanda Section",
+    owner: "IEEE-RWANDA",
+    repo: "ieeerwanda",
+    baseBranch: "main",
+    tokenEnv: "GITHUB_TOKEN_IEEE", // fine-grained token scoped to the IEEE-RWANDA org
+    editorsEnv: "IEEE_EDITOR_IDS", // approved team members who can edit IEEE sites
+    files: [
+      {
+        key: "events",
+        path: "content/events.json",
+        description: "Events. A JSON array of { title, kind, blurb }.",
+        itemFields: [
+          { key: "title", label: "Title" },
+          { key: "kind", label: "Kind (e.g. Workshop, Hackathon, Forum)" },
+          { key: "blurb", label: "Short description" },
+        ],
+      },
+      {
+        key: "executive",
+        path: "content/executive.json",
+        description:
+          "Executive committee members. A JSON array of { name, role, photo? }.",
+      },
+      {
+        key: "operations",
+        path: "content/operations.json",
+        description:
+          "Operations & media team members. A JSON array of { name, role, photo? }.",
+      },
+      {
+        key: "chapters",
+        path: "content/chapters.json",
+        description:
+          "Technical society chapters. A JSON array of { name, blurb, url? }.",
+      },
+      {
+        key: "affinity",
+        path: "content/affinity-groups.json",
+        description:
+          "Affinity groups (WIE, YP, SIGHT). A JSON array of { name, blurb, url? }.",
+      },
+      {
+        key: "testimonials",
+        path: "content/testimonials.json",
+        description: "Member testimonials. A JSON array of { quote, name, role }.",
+      },
+    ],
+  },
+
+  // --- Remaining IEEE sites (comsoc, aess, mtts, grss, iesrwanda) get added
+  //     here once their content is extracted to JSON. ---
 ];
 
 export function findSite(key: string): Site | undefined {
