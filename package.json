@@ -1,0 +1,19 @@
+{
+  "name": "quill",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Quill — a Telegram bot that edits your sites' content via Claude and opens a GitHub PR you merge from chat.",
+  "scripts": {
+    "set-webhook": "node scripts/set-webhook.mjs",
+    "delete-webhook": "node scripts/delete-webhook.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vercel/node": "^5.0.0",
+    "typescript": "^5.6.0"
+  }
+}

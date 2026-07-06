@@ -1,0 +1,63 @@
+// Thin wrappers over the Telegram Bot API. No dependencies — just fetch.
+
+const api = (method: string) =>
+  `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`;
+
+// Escape text so it is safe inside HTML parse_mode messages.
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+export interface InlineKeyboard {
+  inline_keyboard: { text: string; callback_data: string }[][];
+}
+
+export async function sendMessage(
+  chatId: number,
+  text: string,
+  replyMarkup?: InlineKeyboard,
+): Promise<void> {
+  await fetch(api("sendMessage"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: replyMarkup,
+    }),
+  });
+}
+
+export async function editMessageText(
+  chatId: number,
+  messageId: number,
+  text: string,
+): Promise<void> {
+  await fetch(api("editMessageText"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    }),
+  });
+}
+
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+): Promise<void> {
+  await fetch(api("answerCallbackQuery"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+  });
+}
