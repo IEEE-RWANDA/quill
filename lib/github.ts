@@ -31,6 +31,32 @@ async function gh(
 const encodePath = (p: string) =>
   p.split("/").map(encodeURIComponent).join("/");
 
+// --- Granular building blocks ---------------------------------------------
+
+export async function getBranchSha(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+): Promise<string> {
+  const ref = await gh(token, "GET", `/repos/${owner}/${repo}/git/ref/heads/${branch}`);
+  return ref.object.sha;
+}
+
+export async function createBranch(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  fromSha: string,
+): Promise<void> {
+  await gh(token, "POST", `/repos/${owner}/${repo}/git/refs`, {
+    ref: `refs/heads/${branch}`,
+    sha: fromSha,
+  });
+}
+
+// Reads a text file's content + blob sha at a ref.
 export async function getFile(
   token: string,
   owner: string,
@@ -49,6 +75,66 @@ export async function getFile(
   };
 }
 
+// Returns the blob sha of a file at a ref, or undefined if it doesn't exist.
+export async function getFileSha(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+): Promise<string | undefined> {
+  try {
+    const data = await gh(
+      token,
+      "GET",
+      `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`,
+    );
+    return data.sha;
+  } catch {
+    return undefined;
+  }
+}
+
+// Commits a file (text or binary) to a branch. `base64Content` is the file's
+// bytes base64-encoded; pass the existing blob `sha` when updating a file.
+export async function commitFile(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+  base64Content: string,
+  message: string,
+  sha?: string,
+): Promise<void> {
+  await gh(token, "PUT", `/repos/${owner}/${repo}/contents/${encodePath(path)}`, {
+    message,
+    content: base64Content,
+    branch,
+    sha,
+  });
+}
+
+export async function createPr(
+  token: string,
+  owner: string,
+  repo: string,
+  base: string,
+  head: string,
+  title: string,
+  body: string,
+): Promise<number> {
+  const pr = await gh(token, "POST", `/repos/${owner}/${repo}/pulls`, {
+    title,
+    head,
+    base,
+    body,
+  });
+  return pr.number;
+}
+
+// --- Composed convenience: single text-file edit --------------------------
+
 export interface OpenPrOptions {
   token: string;
   owner: string;
@@ -61,61 +147,25 @@ export interface OpenPrOptions {
   body: string;
 }
 
-// Creates a branch off base, commits the new file content to it, and opens a PR.
-// Returns the PR number.
 export async function openPullRequest(opts: OpenPrOptions): Promise<number> {
-  const {
+  const { token, owner, repo, baseBranch, path, newContent, branchName, title, body } = opts;
+  const baseSha = await getBranchSha(token, owner, repo, baseBranch);
+  await createBranch(token, owner, repo, branchName, baseSha);
+  const fileSha = await getFileSha(token, owner, repo, path, baseBranch);
+  await commitFile(
     token,
     owner,
     repo,
-    baseBranch,
-    path,
-    newContent,
     branchName,
+    path,
+    Buffer.from(newContent, "utf-8").toString("base64"),
     title,
-    body,
-  } = opts;
-
-  const baseRef = await gh(
-    token,
-    "GET",
-    `/repos/${owner}/${repo}/git/ref/heads/${baseBranch}`,
+    fileSha,
   );
-  const baseSha: string = baseRef.object.sha;
-
-  await gh(token, "POST", `/repos/${owner}/${repo}/git/refs`, {
-    ref: `refs/heads/${branchName}`,
-    sha: baseSha,
-  });
-
-  // The current file's blob sha is required to update an existing file.
-  let fileSha: string | undefined;
-  try {
-    const existing = await gh(
-      token,
-      "GET",
-      `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(baseBranch)}`,
-    );
-    fileSha = existing.sha;
-  } catch {
-    // File does not exist yet — that's fine, we'll create it.
-  }
-
-  await gh(token, "PUT", `/repos/${owner}/${repo}/contents/${encodePath(path)}`, {
-    message: title,
-    content: Buffer.from(newContent, "utf-8").toString("base64"),
-    branch: branchName,
-    sha: fileSha,
-  });
-
-  const pr = await gh(token, "POST", `/repos/${owner}/${repo}/pulls`, {
-    title,
-    head: branchName,
-    base: baseBranch,
-    body,
-  });
-  return pr.number;
+  return createPr(token, owner, repo, baseBranch, branchName, title, body);
 }
+
+// --- Merge / close --------------------------------------------------------
 
 export async function mergePullRequest(
   token: string,
@@ -127,7 +177,6 @@ export async function mergePullRequest(
   await gh(token, "PUT", `/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
     merge_method: "squash",
   });
-  // Best-effort branch cleanup.
   await gh(
     token,
     "DELETE",

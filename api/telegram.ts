@@ -5,6 +5,7 @@ import {
   editMessageText,
   answerCallbackQuery,
   escapeHtml,
+  downloadTelegramFile,
   type InlineKeyboard,
   type ReplyKeyboard,
 } from "../lib/telegram.js";
@@ -12,6 +13,11 @@ import { sites, findSite, tokenForSite, type Site, type ContentFile } from "../l
 import { route, rewrite } from "../lib/claude.js";
 import {
   getFile,
+  getFileSha,
+  getBranchSha,
+  createBranch,
+  commitFile,
+  createPr,
   openPullRequest,
   mergePullRequest,
   closePullRequest,
@@ -70,6 +76,8 @@ export default async function handler(
   try {
     if (update.callback_query) {
       await handleCallback(update.callback_query);
+    } else if (update.message?.photo) {
+      await handlePhoto(update.message);
     } else if (update.message?.text) {
       await handleMessage(update.message);
     }
@@ -219,6 +227,126 @@ async function listMySites(
   }
   lines.push("Tap 📋 Edit a section to change any of these.");
   await sendMessage(chatId, lines.join("\n"));
+}
+
+// Handles a photo the user sent. It must be a reply to a "pick a section"
+// prompt (so we know where it belongs); the caption describes the item. Quill
+// commits the image into the repo's public/ folder and sets the item's image
+// path — all in one PR.
+async function handlePhoto(message: any): Promise<void> {
+  const chatId: number = message.chat.id;
+  const userId: number | undefined = message.from?.id;
+  const caption: string = (message.caption ?? "").trim();
+
+  if (!isKnownUser(userId, sites)) {
+    await sendMessage(chatId, "⛔ You're not authorized to use this bot.");
+    return;
+  }
+
+  const repliedText: string | undefined = message.reply_to_message?.text;
+  const marker = repliedText?.match(/Section:\s*([\w-]+)\/([\w-]+)/);
+  if (!marker) {
+    await sendMessage(
+      chatId,
+      "📷 To add a photo, first tap <b>📋 Edit a section</b>, pick a section, then <b>reply to that prompt with your photo</b> and a caption describing the item (e.g. the event details).",
+    );
+    return;
+  }
+
+  const site = findSite(marker[1]);
+  const file = site?.files.find((f) => f.key === marker[2]);
+  if (!site || !file) {
+    await sendMessage(chatId, "❓ I couldn't match that to a section. Try /sections again.");
+    return;
+  }
+  if (!canEditSite(userId, site)) {
+    await sendMessage(chatId, `⛔ You're not authorized to edit <b>${escapeHtml(site.name)}</b>.`);
+    return;
+  }
+
+  // Largest rendition of the photo.
+  const photos = message.photo as { file_id: string }[];
+  const fileId = photos[photos.length - 1].file_id;
+
+  await sendMessage(chatId, "🪶 Uploading the image and preparing your change…");
+  await performPhotoAdd(chatId, site, file, caption, fileId);
+}
+
+async function performPhotoAdd(
+  chatId: number,
+  site: Site,
+  file: ContentFile,
+  caption: string,
+  fileId: string,
+): Promise<void> {
+  const token = tokenForSite(site);
+
+  // 1. Download the image from Telegram.
+  const { base64, ext } = await downloadTelegramFile(fileId);
+  const imgName = `quill-${Date.now()}.${ext}`;
+  const repoImagePath = `public/uploads/${imgName}`;
+  const publicUrl = `/uploads/${imgName}`; // Next serves public/ at the site root
+
+  // 2. Ask Claude to build the item, pointing its image/photo field at publicUrl.
+  const { content } = await getFile(token, site.owner, site.repo, file.path, site.baseBranch);
+  const instruction =
+    (caption || "Add a new item.") +
+    `\n\n(Set the new or edited item's image/photo field to "${publicUrl}".)`;
+  const edit = await rewrite({ instruction, path: file.path, currentContent: content });
+
+  if (file.path.endsWith(".json")) {
+    try {
+      JSON.parse(edit.newContent);
+    } catch {
+      await sendMessage(
+        chatId,
+        "⚠️ The generated content wasn't valid JSON, so I didn't open a PR. Try rephrasing the caption.",
+      );
+      return;
+    }
+  }
+
+  // 3. Branch, commit the image, commit the JSON, open the PR.
+  const branchName = `quill/${site.key}-${file.key}-${Date.now()}`;
+  const baseSha = await getBranchSha(token, site.owner, site.repo, site.baseBranch);
+  await createBranch(token, site.owner, site.repo, branchName, baseSha);
+  await commitFile(token, site.owner, site.repo, branchName, repoImagePath, base64, `Add image ${imgName}`);
+  const jsonSha = await getFileSha(token, site.owner, site.repo, file.path, site.baseBranch);
+  await commitFile(
+    token,
+    site.owner,
+    site.repo,
+    branchName,
+    file.path,
+    Buffer.from(edit.newContent, "utf-8").toString("base64"),
+    `content: ${edit.summary}`.slice(0, 72),
+    jsonSha,
+  );
+  const prNumber = await createPr(
+    token,
+    site.owner,
+    site.repo,
+    site.baseBranch,
+    branchName,
+    `content: ${edit.summary}`.slice(0, 72),
+    `Requested via Quill (Telegram) with an uploaded image.\n\n${edit.summary}`,
+  );
+
+  const preview =
+    `✅ <b>PR opened — ${escapeHtml(site.name)}</b>\n` +
+    `<i>${escapeHtml(file.path)}</i> + <i>${escapeHtml(repoImagePath)}</i>\n\n` +
+    `<b>Change:</b> ${escapeHtml(edit.summary)}\n\n` +
+    `<b>Updated section:</b>\n<pre>${escapeHtml(edit.changedSection)}</pre>\n\n` +
+    `<a href="${prUrl(site.owner, site.repo, prNumber)}">Open PR #${prNumber} on GitHub</a>`;
+  const keyboard: InlineKeyboard = {
+    inline_keyboard: [
+      [
+        { text: "✅ Merge", callback_data: `m:${site.key}:${prNumber}` },
+        { text: "❌ Discard", callback_data: `d:${site.key}:${prNumber}` },
+      ],
+    ],
+  };
+  await sendMessage(chatId, preview, keyboard);
 }
 
 // Fetch → rewrite via Claude → open PR → reply with preview + buttons.

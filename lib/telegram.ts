@@ -77,3 +77,21 @@ export async function answerCallbackQuery(
     body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
   });
 }
+
+// Downloads a photo/file the user sent, returning its bytes base64-encoded plus
+// a file extension inferred from Telegram's stored path (defaults to jpg).
+export async function downloadTelegramFile(
+  fileId: string,
+): Promise<{ base64: string; ext: string }> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const meta = await fetch(api("getFile") + `?file_id=${encodeURIComponent(fileId)}`).then(
+    (r) => r.json(),
+  );
+  const filePath: string | undefined = meta?.result?.file_path;
+  if (!filePath) throw new Error("Telegram getFile returned no file_path");
+  const bytes = await fetch(
+    `https://api.telegram.org/file/bot${token}/${filePath}`,
+  ).then((r) => r.arrayBuffer());
+  const ext = (filePath.split(".").pop() || "jpg").toLowerCase();
+  return { base64: Buffer.from(bytes).toString("base64"), ext };
+}
