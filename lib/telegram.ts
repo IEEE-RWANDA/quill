@@ -22,10 +22,19 @@ export interface ForceReply {
   input_field_placeholder?: string;
 }
 
+// A persistent button grid that sits under the message field. Tapping a button
+// sends its text as a normal message, which the handler matches on.
+export interface ReplyKeyboard {
+  keyboard: { text: string }[][];
+  resize_keyboard?: boolean;
+  is_persistent?: boolean;
+  input_field_placeholder?: string;
+}
+
 export async function sendMessage(
   chatId: number,
   text: string,
-  replyMarkup?: InlineKeyboard | ForceReply,
+  replyMarkup?: InlineKeyboard | ForceReply | ReplyKeyboard,
 ): Promise<void> {
   await fetch(api("sendMessage"), {
     method: "POST",

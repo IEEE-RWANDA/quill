@@ -6,6 +6,7 @@ import {
   answerCallbackQuery,
   escapeHtml,
   type InlineKeyboard,
+  type ReplyKeyboard,
 } from "../lib/telegram.js";
 import { sites, findSite, tokenForSite, type Site, type ContentFile } from "../lib/sites.js";
 import { route, rewrite } from "../lib/claude.js";
@@ -26,11 +27,22 @@ const HELP = [
   "<b>Quill</b> — chat-driven content editor for your sites.",
   "",
   "Two ways to edit:",
-  "• Just tell me what to change, e.g. <i>Add a vibecoded site: FooBar, https://foo.bar, a demo of X</i>",
-  "• Or send /sections to pick what to edit from a list.",
+  "• Tap <b>📋 Edit a section</b> below to pick from a list, or",
+  "• Just type what to change, e.g. <i>Change the Weightless description to \"...\"</i>",
   "",
   "Either way, I open a pull request and send you Merge / Discard buttons.",
 ].join("\n");
+
+// Persistent button menu shown under the message field.
+const BTN_EDIT = "📋 Edit a section";
+const BTN_HELP = "❓ Help";
+
+const MAIN_KEYBOARD: ReplyKeyboard = {
+  keyboard: [[{ text: BTN_EDIT }], [{ text: BTN_HELP }]],
+  resize_keyboard: true,
+  is_persistent: true,
+  input_field_placeholder: "Tap a button or type a change…",
+};
 
 export default async function handler(
   req: VercelRequest,
@@ -75,8 +87,16 @@ async function handleMessage(message: any): Promise<void> {
   const userId: number | undefined = message.from?.id;
   const text: string = message.text.trim();
 
-  if (text === "/start" || text === "/help") {
-    await sendMessage(chatId, HELP);
+  // Greeting / help — also (re)shows the persistent button menu for editors.
+  if (text === "/start" || text === "/help" || text === BTN_HELP) {
+    if (!isKnownUser(userId, sites)) {
+      await sendMessage(
+        chatId,
+        `👋 Hi! Quill is restricted to approved editors.\nYour Telegram ID is <code>${userId}</code> — send it to an admin to get access.`,
+      );
+      return;
+    }
+    await sendMessage(chatId, HELP, MAIN_KEYBOARD);
     return;
   }
 
@@ -89,7 +109,7 @@ async function handleMessage(message: any): Promise<void> {
     return;
   }
 
-  if (text === "/sections") {
+  if (text === "/sections" || text === BTN_EDIT) {
     await showSections(chatId, userId);
     return;
   }
