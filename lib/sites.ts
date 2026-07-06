@@ -199,8 +199,44 @@ export const sites: Site[] = [
   chapterSite("mtts", "IEEE MTT-S Rwanda", "mtts"),
   chapterSite("grss", "IEEE GRSS Rwanda", "grss"),
 
-  // iesrwanda still to add — its content lives in a different layout, and its
-  // repo owner needs confirming (personal vs IEEE-RWANDA org).
+  // IES has its own richer template — content in lib/*.json.
+  {
+    key: "ies",
+    name: "IEEE IES Rwanda",
+    owner: "IEEE-RWANDA",
+    repo: "iesrwanda",
+    baseBranch: "main",
+    tokenEnv: "GITHUB_TOKEN_IEEE",
+    editorsEnv: "IEEE_EDITOR_IDS",
+    files: [
+      {
+        key: "events",
+        path: "lib/events.json",
+        description:
+          "Events. A JSON array of { date (ISO), when (display text), title, place, kind, body, status, register, image }.",
+        itemFields: [
+          { key: "date", label: "Date (YYYY-MM-DD)" },
+          { key: "when", label: "When (e.g. 3 Jul 2026 · 1:30 PM)" },
+          { key: "title", label: "Title" },
+          { key: "place", label: "Place" },
+          { key: "kind", label: "Kind (e.g. Summit, Workshop)" },
+          { key: "body", label: "Description" },
+        ],
+      },
+      {
+        key: "officers",
+        path: "lib/officers.json",
+        description:
+          "Officers / committee. A JSON array of { name, role, affil, initials, photo }.",
+      },
+      {
+        key: "conferences",
+        path: "lib/conferences.json",
+        description:
+          "IES conferences. A JSON array of { acronym, name, focus, flagship, students, url }.",
+      },
+    ],
+  },
 ];
 
 export function findSite(key: string): Site | undefined {
