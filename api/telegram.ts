@@ -7,7 +7,7 @@ import {
   escapeHtml,
   type InlineKeyboard,
 } from "../lib/telegram.js";
-import { findSite } from "../lib/sites.js";
+import { findSite, tokenForSite } from "../lib/sites.js";
 import { route, rewrite } from "../lib/claude.js";
 import {
   getFile,
@@ -103,7 +103,9 @@ async function handleMessage(message: any): Promise<void> {
   }
 
   // 2. Pull the current content from GitHub.
+  const token = tokenForSite(site);
   const { content } = await getFile(
+    token,
     site.owner,
     site.repo,
     file.path,
@@ -134,6 +136,7 @@ async function handleMessage(message: any): Promise<void> {
   const branchName = `quill/${site.key}-${file.key}-${Date.now()}`;
   const title = `content: ${edit.summary}`.slice(0, 72);
   const prNumber = await openPullRequest({
+    token,
     owner: site.owner,
     repo: site.repo,
     baseBranch: site.baseBranch,
@@ -182,8 +185,9 @@ async function handleCallback(cq: any): Promise<void> {
     return;
   }
 
+  const token = tokenForSite(site);
   if (action === "m") {
-    await mergePullRequest(site.owner, site.repo, prNumber);
+    await mergePullRequest(token, site.owner, site.repo, prNumber);
     await answerCallbackQuery(cq.id, "Merged ✅");
     if (chatId && messageId) {
       await editMessageText(
@@ -193,7 +197,7 @@ async function handleCallback(cq: any): Promise<void> {
       );
     }
   } else if (action === "d") {
-    await closePullRequest(site.owner, site.repo, prNumber);
+    await closePullRequest(token, site.owner, site.repo, prNumber);
     await answerCallbackQuery(cq.id, "Discarded ❌");
     if (chatId && messageId) {
       await editMessageText(

@@ -46,11 +46,21 @@ wired site — the personal portfolio's "Websites I've Vibecoded" gallery
 2. Copy the **bot token**.
 3. Message [@userinfobot](https://t.me/userinfobot) to get your numeric **user ID**.
 
-### 2. Create a GitHub token
+### 2. Create GitHub token(s)
 
-Create a **fine-grained personal access token** with access to your site repos
-and these repository permissions: **Contents: Read and write** and
-**Pull requests: Read and write**.
+Fine-grained tokens are scoped to a single **resource owner**, so you make one
+per owner your sites live under. Each token needs, under **Repository
+permissions**: **Contents: Read and write** + **Pull requests: Read and write**
+(and nothing else).
+
+- Personal repos (the portfolio) → token with Resource owner = your account →
+  put in `GITHUB_TOKEN_PERSONAL`.
+- IEEE-RWANDA repos → token with Resource owner = `IEEE-RWANDA` →
+  put in `GITHUB_TOKEN_IEEE`.
+
+Each site in [`lib/sites.ts`](lib/sites.ts) names which token it uses via
+`tokenEnv`. If all your repos are under one owner, use a single token and set
+`tokenEnv` to it everywhere.
 
 ### 3. Configure the site registry
 
@@ -69,7 +79,8 @@ npx vercel --prod     # deploy — note the URL it prints
 In the Vercel dashboard (Project → Settings → Environment Variables), set every
 var from [`.env.example`](.env.example): `ANTHROPIC_API_KEY`,
 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` (invent a long random string),
-`ALLOWED_TELEGRAM_USER_IDS`, `GITHUB_TOKEN`. Redeploy so they take effect.
+`ALLOWED_TELEGRAM_USER_IDS`, and your GitHub token(s)
+(`GITHUB_TOKEN_PERSONAL`, `GITHUB_TOKEN_IEEE`). Redeploy so they take effect.
 
 ### 5. Register the webhook
 

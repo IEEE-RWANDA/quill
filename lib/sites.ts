@@ -18,7 +18,19 @@ export interface Site {
   owner: string; // GitHub owner (user or org)
   repo: string; // GitHub repo name
   baseBranch: string; // branch to open PRs against, usually "main"
+  // Name of the env var holding the GitHub token for this repo's owner.
+  // Fine-grained tokens are scoped to one owner, so personal and org repos
+  // use different tokens. Defaults to GITHUB_TOKEN if omitted.
+  tokenEnv?: string;
   files: ContentFile[];
+}
+
+// Resolves the GitHub token for a site from its configured env var.
+export function tokenForSite(site: Site): string {
+  const name = site.tokenEnv ?? "GITHUB_TOKEN";
+  const token = process.env[name];
+  if (!token) throw new Error(`Missing GitHub token env var: ${name}`);
+  return token;
 }
 
 export const sites: Site[] = [
@@ -28,6 +40,7 @@ export const sites: Site[] = [
     owner: "kkipngenokoech", // <-- CHANGE to your GitHub username/org if different
     repo: "kip", // <-- CHANGE to the actual repo name on GitHub
     baseBranch: "main",
+    tokenEnv: "GITHUB_TOKEN_PERSONAL", // fine-grained token scoped to your personal account
     files: [
       {
         key: "websites",
@@ -42,9 +55,10 @@ export const sites: Site[] = [
   // {
   //   key: "ieee-rw",
   //   name: "IEEE Rwanda Section",
-  //   owner: "kkipngenokoech",
+  //   owner: "IEEE-RWANDA",
   //   repo: "ieee-rwanda",
   //   baseBranch: "main",
+  //   tokenEnv: "GITHUB_TOKEN_IEEE", // fine-grained token scoped to the IEEE-RWANDA org
   //   files: [
   //     {
   //       key: "events",
