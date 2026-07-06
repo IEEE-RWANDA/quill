@@ -15,10 +15,17 @@ export interface InlineKeyboard {
   inline_keyboard: { text: string; callback_data: string }[][];
 }
 
+// Telegram's "force reply" — the user's next message becomes a reply to this
+// one, so we can recover context from reply_to_message without storing state.
+export interface ForceReply {
+  force_reply: true;
+  input_field_placeholder?: string;
+}
+
 export async function sendMessage(
   chatId: number,
   text: string,
-  replyMarkup?: InlineKeyboard,
+  replyMarkup?: InlineKeyboard | ForceReply,
 ): Promise<void> {
   await fetch(api("sendMessage"), {
     method: "POST",

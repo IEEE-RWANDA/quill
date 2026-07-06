@@ -7,7 +7,7 @@ import {
   escapeHtml,
   type InlineKeyboard,
 } from "../lib/telegram.js";
-import { sites, findSite, tokenForSite } from "../lib/sites.js";
+import { sites, findSite, tokenForSite, type Site, type ContentFile } from "../lib/sites.js";
 import { route, rewrite } from "../lib/claude.js";
 import {
   getFile,
@@ -25,11 +25,11 @@ export const config = { maxDuration: 60 };
 const HELP = [
   "<b>Quill</b> — chat-driven content editor for your sites.",
   "",
-  "Just tell me what to change, e.g.:",
-  "• <i>Add a vibecoded site: FooBar, https://foo.bar, a demo of X</i>",
-  "• <i>Change the IEEE Rwanda Section description to \"...\"</i>",
+  "Two ways to edit:",
+  "• Just tell me what to change, e.g. <i>Add a vibecoded site: FooBar, https://foo.bar, a demo of X</i>",
+  "• Or send /sections to pick what to edit from a list.",
   "",
-  "I'll open a pull request and send you Merge / Discard buttons.",
+  "Either way, I open a pull request and send you Merge / Discard buttons.",
 ].join("\n");
 
 export default async function handler(
@@ -89,19 +89,49 @@ async function handleMessage(message: any): Promise<void> {
     return;
   }
 
+  if (text === "/sections") {
+    await showSections(chatId, userId);
+    return;
+  }
+
+  // If this message is a reply to a "pick a section" prompt, we already know the
+  // target — skip Claude routing and edit that section directly. The section is
+  // encoded in the prompt text (see showSections / the pick button), so no state
+  // storage is needed.
+  const repliedText: string | undefined = message.reply_to_message?.text;
+  const marker = repliedText?.match(/Section:\s*([\w-]+)\/([\w-]+)/);
+  if (marker) {
+    const site = findSite(marker[1]);
+    const file = site?.files.find((f) => f.key === marker[2]);
+    if (site && file) {
+      if (!canEditSite(userId, site)) {
+        await sendMessage(
+          chatId,
+          `⛔ You're not authorized to edit <b>${escapeHtml(site.name)}</b>.`,
+        );
+        return;
+      }
+      await sendMessage(chatId, "🪶 Working on it…");
+      await performEdit(chatId, site, file, text);
+      return;
+    }
+  }
+
   await sendMessage(chatId, "🪶 Working on it…");
 
-  // 1. Figure out which site + file this request targets.
+  // Otherwise, let Claude figure out which site + file this targets.
   const r = await route(text);
   const site = r.understood ? findSite(r.siteKey) : undefined;
   const file = site?.files.find((f) => f.key === r.fileKey);
   if (!r.understood || !site || !file) {
     const q = r.clarification || "I couldn't tell which site/section to edit.";
-    await sendMessage(chatId, `❓ ${escapeHtml(q)}`);
+    await sendMessage(
+      chatId,
+      `❓ ${escapeHtml(q)}\n\nTip: send /sections to pick from a list.`,
+    );
     return;
   }
 
-  // Per-site check: is this user allowed to edit *this* site?
   if (!canEditSite(userId, site)) {
     await sendMessage(
       chatId,
@@ -110,7 +140,43 @@ async function handleMessage(message: any): Promise<void> {
     return;
   }
 
-  // 2. Pull the current content from GitHub.
+  await performEdit(chatId, site, file, text);
+}
+
+// Shows the list of sites/files this user may edit as tappable buttons.
+async function showSections(
+  chatId: number,
+  userId: number | undefined,
+): Promise<void> {
+  const rows: { text: string; callback_data: string }[][] = [];
+  for (const s of sites) {
+    if (!canEditSite(userId, s)) continue;
+    for (const f of s.files) {
+      rows.push([
+        { text: `${s.name} — ${f.key}`, callback_data: `pick:${s.key}:${f.key}` },
+      ]);
+    }
+  }
+
+  if (rows.length === 0) {
+    await sendMessage(chatId, "You don't have permission to edit any sites yet.");
+    return;
+  }
+
+  await sendMessage(
+    chatId,
+    "📋 <b>What would you like to edit?</b>\nPick a section, then reply with your change.",
+    { inline_keyboard: rows },
+  );
+}
+
+// Fetch → rewrite via Claude → open PR → reply with preview + buttons.
+async function performEdit(
+  chatId: number,
+  site: Site,
+  file: ContentFile,
+  instruction: string,
+): Promise<void> {
   const token = tokenForSite(site);
   const { content } = await getFile(
     token,
@@ -120,9 +186,8 @@ async function handleMessage(message: any): Promise<void> {
     site.baseBranch,
   );
 
-  // 3. Have Claude produce the updated file.
   const edit = await rewrite({
-    instruction: text,
+    instruction,
     path: file.path,
     currentContent: content,
   });
@@ -140,7 +205,6 @@ async function handleMessage(message: any): Promise<void> {
     }
   }
 
-  // 4. Open a PR against the base branch.
   const branchName = `quill/${site.key}-${file.key}-${Date.now()}`;
   const title = `content: ${edit.summary}`.slice(0, 72);
   const prNumber = await openPullRequest({
@@ -155,7 +219,6 @@ async function handleMessage(message: any): Promise<void> {
     body: `Requested via Quill (Telegram).\n\n${edit.summary}`,
   });
 
-  // 5. Reply with a preview of the changed section + Merge/Discard buttons.
   const preview =
     `✅ <b>PR opened — ${escapeHtml(site.name)}</b>\n` +
     `<i>${escapeHtml(file.path)}</i>\n\n` +
@@ -178,19 +241,43 @@ async function handleCallback(cq: any): Promise<void> {
   const userId: number | undefined = cq.from?.id;
   const chatId: number | undefined = cq.message?.chat?.id;
   const messageId: number | undefined = cq.message?.message_id;
-  const data: string = cq.data ?? "";
+  const parts: string[] = (cq.data ?? "").split(":");
+  const action = parts[0];
 
-  const [action, siteKey, prStr] = data.split(":");
-  const prNumber = parseInt(prStr, 10);
-  const site = findSite(siteKey);
-  if (!site || Number.isNaN(prNumber)) {
+  const site = findSite(parts[1]);
+  if (!site) {
     await answerCallbackQuery(cq.id, "Unknown action");
     return;
   }
-
-  // Only someone allowed to edit this site may merge/discard its PRs.
   if (!canEditSite(userId, site)) {
     await answerCallbackQuery(cq.id, "Not authorized");
+    return;
+  }
+
+  // "pick" — user chose a section from the /sections menu. Prompt them to reply
+  // with their change; the section is encoded in the prompt so the reply routes
+  // straight to it (see handleMessage's reply_to_message handling).
+  if (action === "pick") {
+    const file = site.files.find((f) => f.key === parts[2]);
+    if (!file || !chatId) {
+      await answerCallbackQuery(cq.id, "Unknown section");
+      return;
+    }
+    await answerCallbackQuery(cq.id);
+    await sendMessage(
+      chatId,
+      `✍️ Editing <b>${escapeHtml(site.name)}</b> → <i>${escapeHtml(file.description)}</i>\n\n` +
+        `Reply to this message with your change.\n\n` +
+        `<i>Section: ${site.key}/${file.key}</i>`,
+      { force_reply: true, input_field_placeholder: "Describe your change…" },
+    );
+    return;
+  }
+
+  // "m" / "d" — merge or discard a PR.
+  const prNumber = parseInt(parts[2], 10);
+  if (Number.isNaN(prNumber)) {
+    await answerCallbackQuery(cq.id, "Unknown action");
     return;
   }
 
