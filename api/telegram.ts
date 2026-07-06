@@ -35,10 +35,14 @@ const HELP = [
 
 // Persistent button menu shown under the message field.
 const BTN_EDIT = "📋 Edit a section";
+const BTN_SITES = "🌐 My websites";
 const BTN_HELP = "❓ Help";
 
 const MAIN_KEYBOARD: ReplyKeyboard = {
-  keyboard: [[{ text: BTN_EDIT }], [{ text: BTN_HELP }]],
+  keyboard: [
+    [{ text: BTN_EDIT }],
+    [{ text: BTN_SITES }, { text: BTN_HELP }],
+  ],
   resize_keyboard: true,
   is_persistent: true,
   input_field_placeholder: "Tap a button or type a change…",
@@ -111,6 +115,11 @@ async function handleMessage(message: any): Promise<void> {
 
   if (text === "/sections" || text === BTN_EDIT) {
     await showSections(chatId, userId);
+    return;
+  }
+
+  if (text === "/sites" || text === BTN_SITES) {
+    await listMySites(chatId, userId);
     return;
   }
 
@@ -188,6 +197,28 @@ async function showSections(
     "📋 <b>What would you like to edit?</b>\nPick a section, then reply with your change.",
     { inline_keyboard: rows },
   );
+}
+
+// Lists the sites this user can edit and what's editable on each.
+async function listMySites(
+  chatId: number,
+  userId: number | undefined,
+): Promise<void> {
+  const editable = sites.filter((s) => canEditSite(userId, s));
+  if (editable.length === 0) {
+    await sendMessage(chatId, "You don't have permission to edit any sites yet.");
+    return;
+  }
+  const lines = ["🌐 <b>Websites you can edit</b>", ""];
+  for (const s of editable) {
+    lines.push(`<b>${escapeHtml(s.name)}</b>`);
+    for (const f of s.files) {
+      lines.push(`   • ${escapeHtml(f.key)}`);
+    }
+    lines.push("");
+  }
+  lines.push("Tap 📋 Edit a section to change any of these.");
+  await sendMessage(chatId, lines.join("\n"));
 }
 
 // Fetch → rewrite via Claude → open PR → reply with preview + buttons.
