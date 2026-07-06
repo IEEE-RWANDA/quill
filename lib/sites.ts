@@ -6,10 +6,20 @@
 // To add a site: move its editable content into a JSON file in its repo, then
 // add an entry here with the repo coordinates and that file's path.
 
+// A field in a structured list item, used to build the free (no-LLM) "add" form.
+export interface ItemField {
+  key: string; // property name in the JSON object
+  label: string; // prompt shown to the user
+  kind?: "url" | "text"; // "url" gets light validation/normalisation
+}
+
 export interface ContentFile {
   key: string; // stable id used internally
   path: string; // path to the JSON file within the repo
   description: string; // what this file holds — Claude reads this to route
+  // If set, this file is a JSON array of objects with these fields, so Quill can
+  // offer a free, deterministic "add an item" form (no Claude call needed).
+  itemFields?: ItemField[];
 }
 
 export interface Site {
@@ -51,6 +61,41 @@ export const sites: Site[] = [
         path: "content/websites.json",
         description:
           "The 'Websites I've Vibecoded' gallery. A JSON array of objects, each { name, url, description }.",
+        itemFields: [
+          { key: "name", label: "Name" },
+          { key: "url", label: "URL", kind: "url" },
+          { key: "description", label: "Description" },
+        ],
+      },
+      {
+        key: "experience",
+        path: "content/experience.json",
+        description:
+          "Work experience entries. A JSON array of { company, title, date, description, tags[], highlight, color }.",
+      },
+      {
+        key: "featured",
+        path: "content/featured-projects.json",
+        description:
+          "Featured projects shown prominently on the homepage. A JSON array of { title, description, tech[], image, github?, external?, docs?, channels?, items? }.",
+      },
+      {
+        key: "projects",
+        path: "content/other-projects.json",
+        description:
+          "The 'other projects' grid. A JSON array of { title, description, tech[], github?, external?, href?, pinned? }.",
+      },
+      {
+        key: "publications",
+        path: "content/publications.json",
+        description:
+          "Papers / publications. A JSON array of { title, authors, venue, year, status, abstract, links[], tags[] }.",
+      },
+      {
+        key: "education",
+        path: "content/education.json",
+        description:
+          "Education entries. A JSON array of { degree, school, location, period, description, courses[] }.",
       },
     ],
   },
