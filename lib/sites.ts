@@ -22,6 +22,10 @@ export interface Site {
   // Fine-grained tokens are scoped to one owner, so personal and org repos
   // use different tokens. Defaults to GITHUB_TOKEN if omitted.
   tokenEnv?: string;
+  // Name of the env var holding a comma-separated list of Telegram user IDs
+  // allowed to edit this site (in addition to admins). Omit to make the site
+  // admin-only — e.g. the personal portfolio.
+  editorsEnv?: string;
   files: ContentFile[];
 }
 
@@ -59,6 +63,7 @@ export const sites: Site[] = [
   //   repo: "ieee-rwanda",
   //   baseBranch: "main",
   //   tokenEnv: "GITHUB_TOKEN_IEEE", // fine-grained token scoped to the IEEE-RWANDA org
+  //   editorsEnv: "IEEE_EDITOR_IDS", // approved team members who can edit IEEE sites
   //   files: [
   //     {
   //       key: "events",

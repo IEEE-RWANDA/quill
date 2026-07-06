@@ -79,8 +79,9 @@ npx vercel --prod     # deploy — note the URL it prints
 In the Vercel dashboard (Project → Settings → Environment Variables), set every
 var from [`.env.example`](.env.example): `ANTHROPIC_API_KEY`,
 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` (invent a long random string),
-`ALLOWED_TELEGRAM_USER_IDS`, and your GitHub token(s)
-(`GITHUB_TOKEN_PERSONAL`, `GITHUB_TOKEN_IEEE`). Redeploy so they take effect.
+`ADMIN_TELEGRAM_USER_IDS`, any per-site editor lists (e.g. `IEEE_EDITOR_IDS`),
+and your GitHub token(s) (`GITHUB_TOKEN_PERSONAL`, `GITHUB_TOKEN_IEEE`).
+Redeploy so they take effect.
 
 ### 5. Register the webhook
 
@@ -116,7 +117,10 @@ Tap **Merge** to publish, **Discard** to throw it away.
 
 ## Notes & limits
 
-- **One editor.** Only Telegram IDs in `ALLOWED_TELEGRAM_USER_IDS` can use it.
+- **Tiered access.** `ADMIN_TELEGRAM_USER_IDS` (you) can edit every site. Each
+  site can also grant a team via its own `editorsEnv` list — e.g. approved IEEE
+  members editing the IEEE sites, while the personal portfolio stays admin-only.
+  Strangers are refused before any Claude call runs.
 - **Model.** Uses `claude-haiku-4-5` (cheap). Change `MODEL` in
   [`lib/claude.ts`](lib/claude.ts) to `claude-sonnet-5` for tougher edits.
 - **Review before merge.** Nothing goes live until you tap Merge — Quill also

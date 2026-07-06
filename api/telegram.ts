@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { isAllowed } from "../lib/auth.js";
+import { isKnownUser, canEditSite } from "../lib/auth.js";
 import {
   sendMessage,
   editMessageText,
@@ -7,7 +7,7 @@ import {
   escapeHtml,
   type InlineKeyboard,
 } from "../lib/telegram.js";
-import { findSite, tokenForSite } from "../lib/sites.js";
+import { sites, findSite, tokenForSite } from "../lib/sites.js";
 import { route, rewrite } from "../lib/claude.js";
 import {
   getFile,
@@ -82,7 +82,8 @@ async function handleMessage(message: any): Promise<void> {
     return;
   }
 
-  if (!isAllowed(userId)) {
+  // Refuse strangers up front — before spending any Claude calls.
+  if (!isKnownUser(userId, sites)) {
     await sendMessage(
       chatId,
       `⛔ You're not authorized to use this bot. Your Telegram ID is <code>${userId}</code>.`,
@@ -99,6 +100,15 @@ async function handleMessage(message: any): Promise<void> {
   if (!r.understood || !site || !file) {
     const q = r.clarification || "I couldn't tell which site/section to edit.";
     await sendMessage(chatId, `❓ ${escapeHtml(q)}`);
+    return;
+  }
+
+  // Per-site check: is this user allowed to edit *this* site?
+  if (!canEditSite(userId, site)) {
+    await sendMessage(
+      chatId,
+      `⛔ You're not authorized to edit <b>${escapeHtml(site.name)}</b>.`,
+    );
     return;
   }
 
@@ -172,16 +182,17 @@ async function handleCallback(cq: any): Promise<void> {
   const messageId: number | undefined = cq.message?.message_id;
   const data: string = cq.data ?? "";
 
-  if (!isAllowed(userId)) {
-    await answerCallbackQuery(cq.id, "Not authorized");
-    return;
-  }
-
   const [action, siteKey, prStr] = data.split(":");
   const prNumber = parseInt(prStr, 10);
   const site = findSite(siteKey);
   if (!site || Number.isNaN(prNumber)) {
     await answerCallbackQuery(cq.id, "Unknown action");
+    return;
+  }
+
+  // Only someone allowed to edit this site may merge/discard its PRs.
+  if (!canEditSite(userId, site)) {
+    await answerCallbackQuery(cq.id, "Not authorized");
     return;
   }
 
