@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Recreation of the classic IEEE master-brand mark for immediate use.
+       For official/compliant artwork, download from brand-experience.ieee.org -->
+  <rect width="512" height="512" fill="#FFFFFF"/>
+
+  <g transform="translate(256,196) rotate(-16)">
+    <!-- Kite -->
+    <path d="M 0 -110 L 118 0 L 0 110 L -118 0 Z" fill="#00629B"/>
+    <!-- Flag stripes in the upper-right -->
+    <g stroke="#FFFFFF" stroke-width="11" stroke-linecap="round">
+      <line x1="14" y1="-40" x2="74" y2="-40"/>
+      <line x1="22" y1="-18" x2="90" y2="-18"/>
+      <line x1="30" y1="4"  x2="98" y2="4"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="256" y="392" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-weight="700"
+        font-size="104" letter-spacing="2" fill="#00629B">IEEE</text>
+</svg>

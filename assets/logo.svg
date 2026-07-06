@@ -1,0 +1,54 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0072BC"/>
+      <stop offset="1" stop-color="#00436E"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE14D"/>
+      <stop offset="1" stop-color="#F5C400"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="256" cy="256" r="256"/></clipPath>
+  </defs>
+
+  <!-- Circular badge -->
+  <g clip-path="url(#disc)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <!-- Green base band (Rwanda) -->
+    <rect x="0" y="430" width="512" height="82" fill="#1F8A4C"/>
+    <rect x="0" y="418" width="512" height="14" fill="#FAD201"/>
+  </g>
+
+  <!-- Gold ring frame -->
+  <circle cx="256" cy="256" r="246" fill="none" stroke="#FAD201" stroke-width="8"/>
+
+  <!-- Rwandan sun -->
+  <g transform="translate(256,188)">
+    <g fill="url(#sun)">
+      <g>
+        <rect x="-7" y="-96" width="14" height="34" rx="7"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(30)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(60)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(90)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(120)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(150)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(180)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(210)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(240)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(270)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(300)"/>
+        <rect x="-7" y="-96" width="14" height="34" rx="7" transform="rotate(330)"/>
+      </g>
+    </g>
+    <circle cx="0" cy="0" r="52" fill="url(#sun)"/>
+    <circle cx="0" cy="0" r="52" fill="none" stroke="#E0A800" stroke-width="3" opacity="0.5"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="256" y="342" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-weight="700"
+        font-size="86" letter-spacing="4" fill="#FFFFFF">IEEE</text>
+  <text x="256" y="392" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-weight="700"
+        font-size="40" letter-spacing="12" fill="#FAD201">RWANDA</text>
+</svg>

@@ -16,6 +16,7 @@ import {
   closePullRequest,
   prUrl,
 } from "../lib/github.js";
+import { friendlyError } from "../lib/errors.js";
 
 // Allow up to 60s — the message flow makes two Claude calls plus a few GitHub
 // calls. This still returns well within Telegram's webhook timeout.
@@ -61,10 +62,7 @@ export default async function handler(
     const chatId =
       update.message?.chat?.id ?? update.callback_query?.message?.chat?.id;
     if (chatId) {
-      await sendMessage(
-        chatId,
-        "⚠️ Something went wrong handling that. Check the Vercel logs for details.",
-      );
+      await sendMessage(chatId, friendlyError(err));
     }
   }
 

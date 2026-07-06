@@ -1,0 +1,45 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.4" r="0.75">
+      <stop offset="0" stop-color="#EAF4FF"/>
+      <stop offset="1" stop-color="#CFE6FB"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E90E0"/>
+      <stop offset="1" stop-color="#0A57A8"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B3D74"/>
+      <stop offset="1" stop-color="#062A52"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+
+  <!-- Antenna -->
+  <line x1="256" y1="150" x2="256" y2="118" stroke="#0A57A8" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="256" cy="108" r="16" fill="#28C0F0"/>
+  <circle cx="256" cy="108" r="16" fill="#28C0F0" opacity="0.35" transform="scale(1)"/>
+
+  <!-- Ears -->
+  <rect x="146" y="238" width="26" height="70" rx="12" fill="#0A57A8"/>
+  <rect x="340" y="238" width="26" height="70" rx="12" fill="#0A57A8"/>
+  <circle cx="159" cy="273" r="7" fill="#28C0F0"/>
+  <circle cx="353" cy="273" r="7" fill="#28C0F0"/>
+
+  <!-- Head -->
+  <rect x="164" y="158" width="184" height="184" rx="42" fill="url(#body)"/>
+  <rect x="164" y="158" width="184" height="184" rx="42" fill="none" stroke="#0A57A8" stroke-width="4" opacity="0.4"/>
+
+  <!-- Face screen -->
+  <rect x="192" y="196" width="128" height="108" rx="26" fill="url(#face)"/>
+
+  <!-- Eyes -->
+  <circle cx="228" cy="240" r="17" fill="#28C0F0"/>
+  <circle cx="284" cy="240" r="17" fill="#28C0F0"/>
+  <circle cx="233" cy="235" r="5" fill="#FFFFFF"/>
+  <circle cx="289" cy="235" r="5" fill="#FFFFFF"/>
+
+  <!-- Smile -->
+  <path d="M 224 274 Q 256 292 288 274" fill="none" stroke="#28C0F0" stroke-width="8" stroke-linecap="round"/>
+</svg>
